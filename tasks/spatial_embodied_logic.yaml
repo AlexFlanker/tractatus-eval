@@ -1,0 +1,37 @@
+# Tractatus-Eval: Spatial Embodied Logic
+# =======================================
+# EleutherAI lm-evaluation-harness task configuration
+#
+# Evaluates whether LLMs can reason about hard physical constraints
+# (walls, obstacles, grid boundaries) that require embodied understanding.
+#
+# Usage:
+#   lm_eval --model hf --model_args pretrained=<model> \
+#           --tasks spatial_embodied_logic \
+#           --include_path ./tractatus_eval/tasks
+#
+group: tractatus_eval
+task: spatial_embodied_logic
+dataset_path: json
+dataset_kwargs:
+  data_files:
+    test: data/spatial_embodied_logic.jsonl
+output_type: multiple_choice
+doc_to_text: "{{query}}"
+doc_to_choice: "{{choices}}"
+doc_to_target: "{{gold}}"
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 0.1.0
+  description: >
+    Spatial Embodied Logic benchmark from Project Tractatus-Eval.
+    Tests LLM understanding of physical grid navigation constraints
+    including obstacle avoidance, boundary awareness, and optimal pathfinding.
+  author: Project Tractatus-Eval
+  num_fewshot: 0
