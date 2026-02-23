@@ -125,17 +125,19 @@ tractatus_eval/
 
 ## Baseline Results
 
-Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) (0-shot, multiple choice).
+Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) (0-shot, multiple choice). All runs on Apple M5 (24GB, MPS).
 
-| Model | Params | acc | acc_norm | Device | Time |
-|---|---|---|---|---|---|
-| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | Apple M5 (MPS) | 77s |
-| *Random baseline* | — | *0.250* | *—* | — | — |
+| Model | Params | acc | acc_norm | Time |
+|---|---|---|---|---|
+| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | 1m17s |
+| EleutherAI/pythia-1.4b | 1.4B | 0.169 ±0.012 | 0.195 ±0.013 | 2m57s |
+| EleutherAI/pythia-2.8b | 2.8B | 0.188 ±0.012 | 0.191 ±0.012 | 5m41s |
+| TinyLlama-1.1B-Chat | 1.1B | 0.226 ±0.013 | 0.213 ±0.013 | 3m39s |
+| microsoft/phi-2 | 2.7B | **0.322 ±0.015** | **0.306 ±0.015** | 6m46s |
+| *Random baseline* | — | *0.250* | *—* | — |
 
 > [!NOTE]
-> Pythia-410m scores **well below random chance** (25%), confirming the benchmark is genuinely challenging. The model lacks embodied spatial understanding and cannot reliably distinguish physically valid paths from distractors. We expect larger models to improve but not fully solve this task without embodied grounding.
-
-*More model results coming soon — contributions welcome!*
+> **Key findings:** (1) A clear **scaling trend** exists within the Pythia family: 410M → 1.4B → 2.8B shows monotonic improvement, yet all remain **below random chance** (25%). (2) **Phi-2** is the only model that exceeds random chance, likely due to its code/math-heavy training mix. (3) Even the best-performing model (Phi-2) only reaches 32.2% — far from ceiling — confirming that embodied spatial reasoning remains genuinely hard for text-only LLMs.
 
 ## How It Works Under the Hood
 
@@ -296,17 +298,19 @@ lm_eval --model hf \
 
 ## 基线评估结果
 
-使用 [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) 评估（0-shot，多选题）。
+使用 [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) 评估（0-shot，多选题）。所有测试在 Apple M5（24GB, MPS）上完成。
 
-| 模型 | 参数量 | acc | acc_norm | 设备 | 耗时 |
-|---|---|---|---|---|---|
-| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | Apple M5 (MPS) | 77s |
-| *随机基线* | — | *0.250* | *—* | — | — |
+| 模型 | 参数量 | acc | acc_norm | 耗时 |
+|---|---|---|---|---|
+| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | 1m17s |
+| EleutherAI/pythia-1.4b | 1.4B | 0.169 ±0.012 | 0.195 ±0.013 | 2m57s |
+| EleutherAI/pythia-2.8b | 2.8B | 0.188 ±0.012 | 0.191 ±0.012 | 5m41s |
+| TinyLlama-1.1B-Chat | 1.1B | 0.226 ±0.013 | 0.213 ±0.013 | 3m39s |
+| microsoft/phi-2 | 2.7B | **0.322 ±0.015** | **0.306 ±0.015** | 6m46s |
+| *随机基线* | — | *0.250* | *—* | — |
 
 > [!NOTE]
-> Pythia-410m 的准确率**远低于随机猜测基线**（25%），证实了该基准对小模型的真实挑战性。模型缺乏具身空间理解，无法可靠地区分物理有效路径和干扰项。我们预期更大的模型会有所提升，但若无具身基础，仍难以完全解决此任务。
-
-*更多模型结果即将更新——欢迎贡献！*
+> **关键发现：** (1) Pythia 家族内存在清晰的**扩展趋势**：410M → 1.4B → 2.8B 准确率单调递增，但全部**低于随机猜测基线**（25%）。 (2) **Phi-2** 是唯一超过随机基线的模型，可能得益于其代码/数学密集的训练数据。 (3) 即使表现最好的 Phi-2 也仅达到 32.2%——远未到天花板——证实了具身空间推理对纯文本 LLM 仍然是真正的难题。
 
 ## 工作原理
 
