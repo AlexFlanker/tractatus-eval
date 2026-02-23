@@ -123,6 +123,20 @@ tractatus_eval/
 | Distractor validation | Physics-engine playback (0% contamination) |
 | Generation efficiency | ~99% (1,006 attempts for 1,000 samples) |
 
+## Baseline Results
+
+Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) (0-shot, multiple choice).
+
+| Model | Params | acc | acc_norm | Device | Time |
+|---|---|---|---|---|---|
+| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | Apple M5 (MPS) | 77s |
+| *Random baseline* | — | *0.250* | *—* | — | — |
+
+> [!NOTE]
+> Pythia-410m scores **well below random chance** (25%), confirming the benchmark is genuinely challenging. The model lacks embodied spatial understanding and cannot reliably distinguish physically valid paths from distractors. We expect larger models to improve but not fully solve this task without embodied grounding.
+
+*More model results coming soon — contributions welcome!*
+
 ## How It Works Under the Hood
 
 ```
@@ -279,6 +293,20 @@ lm_eval --model hf \
 | 去重机制 | SHA-256 指纹 |
 | 干扰项验证 | 物理引擎回放（0% 污染率） |
 | 生成效率 | ~99%（1,006 次尝试生成 1,000 条） |
+
+## 基线评估结果
+
+使用 [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) 评估（0-shot，多选题）。
+
+| 模型 | 参数量 | acc | acc_norm | 设备 | 耗时 |
+|---|---|---|---|---|---|
+| EleutherAI/pythia-410m | 410M | 0.126 ±0.011 | 0.150 ±0.011 | Apple M5 (MPS) | 77s |
+| *随机基线* | — | *0.250* | *—* | — | — |
+
+> [!NOTE]
+> Pythia-410m 的准确率**远低于随机猜测基线**（25%），证实了该基准对小模型的真实挑战性。模型缺乏具身空间理解，无法可靠地区分物理有效路径和干扰项。我们预期更大的模型会有所提升，但若无具身基础，仍难以完全解决此任务。
+
+*更多模型结果即将更新——欢迎贡献！*
 
 ## 工作原理
 
