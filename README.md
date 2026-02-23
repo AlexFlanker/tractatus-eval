@@ -139,6 +139,18 @@ Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI
 > [!NOTE]
 > **Key findings:** (1) A clear **scaling trend** exists within the Pythia family: 410M → 1.4B → 2.8B shows monotonic improvement, yet all remain **below random chance** (25%). (2) **Phi-2** is the only model that exceeds random chance, likely due to its code/math-heavy training mix. (3) Even the best-performing model (Phi-2) only reaches 32.2% — far from ceiling — confirming that embodied spatial reasoning remains genuinely hard for text-only LLMs.
 
+### Expanded Embodied Tasks (New in v0.2!)
+
+We have expanded the benchmark with 5 additional tasks that test distinct physical constraints. Evaluated with `EleutherAI/pythia-410m` (0-shot):
+
+| Task | Physics Tested | Pythia-410m Accuracy |
+|---|---|---|
+| **Key-Lock Puzzles** | State dependency (keys must be gathered before doors) | 11.7% (deeply below random) |
+| **Object Stacking** | Gravity, structural integrity, center-of-mass support | 21.4% (below random) |
+| **Container Filling** | Volume, pouring transfers, capacity clipping (overflow) | 46.1% |
+| **Circuit Connectivity** | Electrical path tracing and strict topological loops | 49.9% |
+| **Collision Prediction** | Temporal extrapolation, object trajectories, spatial intersection | 50.0% |
+
 ## How It Works Under the Hood
 
 ```
@@ -311,6 +323,18 @@ lm_eval --model hf \
 
 > [!NOTE]
 > **关键发现：** (1) Pythia 家族内存在清晰的**扩展趋势**：410M → 1.4B → 2.8B 准确率单调递增，但全部**低于随机猜测基线**（25%）。 (2) **Phi-2** 是唯一超过随机基线的模型，可能得益于其代码/数学密集的训练数据。 (3) 即使表现最好的 Phi-2 也仅达到 32.2%——远未到天花板——证实了具身空间推理对纯文本 LLM 仍然是真正的难题。
+
+### 扩展的具身认知任务 (v0.2 新增！)
+
+我们在基准中新增了 5 个测试不同物理约束的任务。使用 `EleutherAI/pythia-410m` (0-shot) 的评估结果如下：
+
+| 任务 | 测试的物理约束 | Pythia-410m 准确率 |
+|---|---|---|
+| **钥匙-锁谜题 (Key-Lock Puzzles)** | 状态依赖（必须先拾取钥匙才能开门） | 11.7% (远低于随机猜测) |
+| **物体堆叠 (Object Stacking)** | 重力、结构完整性、重心支撑 | 21.4% (低于随机猜测) |
+| **容器装水 (Container Filling)** | 容量、倾倒转移、溢出限制 | 46.1% |
+| **电路连通性 (Circuit Connectivity)** | 电路追踪与严格的拓扑回路 | 49.9% |
+| **碰撞预测 (Collision Prediction)** | 时间外推、物体轨迹、空间相交 | 50.0% |
 
 ## 工作原理
 
