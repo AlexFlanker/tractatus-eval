@@ -24,26 +24,114 @@ Consider a simple request: *"Navigate from A1 to E5, avoiding walls."* A human c
 
 **Tractatus-Eval** quantifies this gap. Inspired by Wittgenstein's *Tractatus Logico-Philosophicus* — *"The limits of my language mean the limits of my world"* — this benchmark asks: **what are the limits of a world built entirely from text?**
 
-## What It Measures
+## The Six Tasks
 
-Each evaluation sample presents a **5×5 grid navigation problem** with:
+Tractatus-Eval consists of **6 tasks**, each targeting a different dimension of embodied physical reasoning. All tasks share the same architecture: procedural generation → deterministic ground truth → distractor validation → JSONL output.
 
-- A **start position** and **goal position**
-- **3 impassable obstacles** (walls)
-- An **ASCII map** for visual grounding
-- **4 multiple-choice answers** (1 correct, 3 distractors)
+---
 
-The ground-truth shortest path is computed via **A\* search**. Distractors are specifically designed to exploit embodied cognition blindspots:
+### 1. Spatial Navigation 🗺️
 
-| Distractor Strategy | What It Tests |
+**Physics tested:** Grid pathfinding, obstacle avoidance, boundary awareness
+
+The model must find the shortest valid path from a start cell to a goal cell on an N×N grid with impassable obstacles. The ground truth is computed via **A\* search** with Manhattan-distance heuristic.
+
+**Distractor strategies:**
+| Strategy | What It Tests |
 |---|---|
 | **Wall Teleportation** | Straight-line path ignoring obstacles — tests if the model treats `#` as truly impassable |
 | **Random Walk** | Same-length random direction sequence — tests if the model actually traces the path |
 | **Reversed Path** | Correct path played backwards — tests directional coherence |
 | **Off-by-One Mutation** | Single-direction swap in the correct path — tests fine-grained spatial tracking |
 
+✅ **Physics-engine playback:** Every distractor is simulated step-by-step. Candidates that secretly reach the goal without violations are automatically discarded (0% contamination).
+
+---
+
+### 2. Key-Lock Puzzles 🔑
+
+**Physics tested:** State-dependent actions, inventory tracking, sequential dependencies
+
+The model must navigate a grid where **colored doors** block the path. Each door requires picking up a matching **colored key** first. The solution is a sequence of moves interleaved with `pick_up_<color>` and `unlock_<color>` actions.
+
+The ground truth uses a **state-aware BFS** that searches over `(position, inventory)` space — expanding ~25× the state space of regular pathfinding.
+
+**Distractor strategies:**
+- Skip all key pickups (walk straight into locked doors)
+- Remove unlock actions (attempt to pass through locked doors without unlocking)
+- Swap key colors (use the wrong key for each door)
+- Mutate a single movement direction
+- Random walks with sprinkled key/unlock actions
+
+✅ **Physics-engine playback:** Full step-by-step simulation tracking position AND inventory. Each candidate distractor is replayed; if it validly reaches the goal (e.g., an alternate key-collection order), it is rejected as a distractor.
+
+---
+
+### 3. Object Stacking 📦
+
+**Physics tested:** Gravity, structural stability, center-of-mass support
+
+Given a set of blocks with different widths, the model must determine the correct bottom-to-top stacking order such that each block is fully supported by the one below it. A block is **stable** only if its width ≤ the width of the block directly beneath it.
+
+**Distractor strategies:**
+- Random permutations of the correct stack, each validated to be **physically unstable** via `is_stable()` — ensuring every wrong answer truly violates the support constraint.
+
+✅ **Physics validator:** `is_stable()` — iterates through each adjacent pair and confirms `width[i] ≤ width[i-1]`. Only permutations that fail this check are accepted as distractors.
+
+---
+
+### 4. Container Filling 🫗
+
+**Physics tested:** Volume conservation, pour transfers, capacity limits (overflow)
+
+The model is presented with 2–4 containers of varying capacities and initial fill levels, then a sequence of actions: `Pour A into B`, `Fill C`, `Empty B`, etc. It must compute the final state of all containers after all actions execute.
+
+The ground truth is computed by a **step-by-step simulator** (`simulate_step()`) that enforces capacity capping — when pouring into a full container, excess liquid is lost (physical overflow).
+
+**Distractor strategies:**
+- **Naive math (no overflow capping)** — simulates without respecting capacity limits, producing plausible but wrong totals
+- **Shuffled values** — correct final values assigned to wrong containers
+- **Random fills** — random amounts within each container's capacity range
+
+✅ **Physics validator:** `simulate_step()` — enforces `min(poured + current, capacity)` at each step. The correct answer is the only state that results from faithful step-by-step simulation with overflow handling.
+
+---
+
+### 5. Collision Prediction 💥
+
+**Physics tested:** Temporal extrapolation, trajectory projection, spatial intersection
+
+Two or more objects move across an N×N grid with fixed velocities (direction + speed). The model must predict whether they **collide** (occupy the same cell at the same time step), and if so, report the step number and collision cell.
+
+The ground truth is computed by a **`simulate()` function** that advances all objects simultaneously for up to `MAX_STEPS` time steps, checking for co-occupation at each tick.
+
+**Distractor strategies:**
+- If collision occurs: "No collision" + off-by-one step + wrong cell
+- If no collision: fabricated collision events at random steps/cells
+- All distractors describe physically impossible outcomes given the trajectories
+
+✅ **Physics validator:** `simulate()` — deterministic step-by-step trajectory computation. The ground truth is the only answer consistent with the actual simulation.
+
+---
+
+### 6. Circuit Connectivity ⚡
+
+**Physics tested:** Electrical path tracing, topological connectivity, switch state logic
+
+An N×N grid contains a battery (`+`/`-`), a bulb (`B`), wires (`W`), and numbered switches. The model must determine whether the bulb lights up. Electricity flows only through wires and **CLOSED** switches; **OPEN** switches and gaps break the circuit.
+
+The ground truth checks two conditions: (1) all switches are CLOSED, AND (2) the wire path from `+` to `-` through the bulb is continuous (no gaps from random wire breaks).
+
+**Distractor strategies:**
+- Fixed 4-choice format: "Yes, the bulb lights up", "No, the circuit is broken", "Yes, but only dimly", "No, it shorts out"
+- The correct answer is determined by graph reachability + switch state evaluation
+
+✅ **Physics validator:** Graph-based reachability — path from `+` → bulb → `-` must exist through only wires and CLOSED switches. Wire breaks and OPEN switches are the two failure modes.
+
+---
+
 > [!IMPORTANT]
-> Every distractor candidate is validated through a **physics-engine playback** step before acceptance. Candidates that are secretly valid alternate paths (reach the goal without hitting any wall or boundary) are **automatically discarded**, preventing data contamination where correct answers would be scored as wrong. See [Data Integrity](#data-integrity) below.
+> **Every task enforces 0% contamination.** No distractor is accepted unless it provably violates the physical constraints of its task. This means: every wrong answer is wrong *for a physically grounded reason*, not just textually implausible.
 
 ## Sample Prompt
 
