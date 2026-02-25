@@ -102,28 +102,34 @@ lm_eval --model hf \
 tractatus_eval/
 ├── README.md
 ├── scripts/
-│   └── generate_spatial_eval.py   # Data generator (A* + distractors + JSONL)
+│   ├── generate_spatial_eval.py     # Spatial navigation (A* + distractors)
+│   ├── generate_keylock_eval.py     # Key-lock puzzles (state-aware BFS)
+│   ├── generate_stacking_eval.py    # Object stacking (gravity + support)
+│   ├── generate_container_eval.py   # Container filling (volume + overflow)
+│   ├── generate_collision_eval.py   # Collision prediction (trajectories)
+│   ├── generate_circuit_eval.py     # Circuit connectivity (path tracing)
+│   ├── generate_all_tiers.py        # Batch: generate Easy/Medium/Hard for all tasks
+│   └── difficulty_presets.py        # Centralized difficulty tier config
 ├── data/
-│   └── spatial_embodied_logic.jsonl  # Pre-generated 1000-sample dataset
+│   ├── spatial_embodied_logic.jsonl # Original 1000-sample spatial dataset
+│   ├── *_{easy,medium,hard}.jsonl   # 18 difficulty-tiered datasets (500 each)
+│   └── ...                          # Additional task datasets
 └── tasks/
-    └── spatial_embodied_logic.yaml   # EleutherAI lm-eval-harness task config
+    └── spatial_embodied_logic.yaml  # EleutherAI lm-eval-harness task config
 ```
 
 ## Dataset Statistics
 
 | Metric | Value |
 |---|---|
-| Total samples | 1,000 |
-| Grid size | 5 × 5 |
-| Obstacles per grid | 3 |
+| Total tasks | 6 (Spatial, Key-Lock, Stacking, Container, Collision, Circuit) |
+| Difficulty tiers per task | 3 (Easy / Medium / Hard) |
+| Samples per tier | 500 |
+| Total tiered samples | 9,000 (18 datasets × 500) |
 | Choices per question | 4 (1 correct + 3 distractors) |
-| Avg shortest path | 3.5 steps |
-| Path length range | 1 – 9 steps |
-| Deduplication | SHA-256 fingerprint |
 | Distractor validation | Physics-engine playback (0% contamination) |
-| Generation efficiency | ~99% (1,006 attempts for 1,000 samples) |
 
-## Baseline Results
+## Baseline Results — Spatial Navigation (Original Task)
 
 Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) (0-shot, multiple choice). All runs on Apple M5 (24GB, MPS).
 
@@ -139,17 +145,28 @@ Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI
 > [!NOTE]
 > **Key findings:** (1) A clear **scaling trend** exists within the Pythia family: 410M → 1.4B → 2.8B shows monotonic improvement, yet all remain **below random chance** (25%). (2) **Phi-2** is the only model that exceeds random chance, likely due to its code/math-heavy training mix. (3) Even the best-performing model (Phi-2) only reaches 32.2% — far from ceiling — confirming that embodied spatial reasoning remains genuinely hard for text-only LLMs.
 
-### Expanded Embodied Tasks (New in v0.2!)
+### Difficulty Tier Results (v0.2)
 
-We have expanded the benchmark with 5 additional tasks that test distinct physical constraints. Evaluated with `EleutherAI/pythia-410m` (0-shot):
+Each task is generated at three difficulty levels (Easy / Medium / Hard) by scaling core complexity parameters: grid size, number of objects, time horizon, etc. This produces a **difficulty × model** matrix that reveals how LLM performance degrades with increasing physical complexity.
 
-| Task | Physics Tested | Pythia-410m Accuracy |
-|---|---|---|
-| **Key-Lock Puzzles** | State dependency (keys must be gathered before doors) | 11.7% (deeply below random) |
-| **Object Stacking** | Gravity, structural integrity, center-of-mass support | 21.4% (below random) |
-| **Container Filling** | Volume, pouring transfers, capacity clipping (overflow) | 46.1% |
-| **Circuit Connectivity** | Electrical path tracing and strict topological loops | 49.9% |
-| **Collision Prediction** | Temporal extrapolation, object trajectories, spatial intersection | 50.0% |
+**Pythia-410m (0-shot, acc) across all tasks and tiers:**
+
+| Task | Easy | Medium | Hard | What Changes |
+|---|---|---|---|---|
+| **Spatial Navigation** | 13.6% | 11.0% | 15.8% | Grid: 4→5→7, Obstacles: 2→3→5 |
+| **Key-Lock Puzzles** | 9.8% | 12.4% | 13.6% | Grid: 4→5→7, Key pairs: 1→1‑2→2‑3 |
+| **Object Stacking** | **27.0%** | 23.6% | 23.8% | Blocks: 3→4→6, Width range widens |
+| **Container Filling** | 37.2% | 46.4% | 47.6% | Containers: 2→2‑3→3‑4, Steps: 2‑3→3‑5→5‑7 |
+| **Collision Prediction** | 50.0% | 50.0% | 50.0% | Grid: 4→5→7, Objects: 2→2→3, Steps: 3→5→8 |
+| **Circuit Connectivity** | 49.8% | 49.8% | 49.8% | Grid: 4→5→7, Switches: 1→1‑3→2‑4 |
+| *Random baseline* | *25.0%* | *25.0%* | *25.0%* | — |
+
+> [!IMPORTANT]
+> **Key insights from difficulty scaling:**
+> - **Stacking** shows the clearest difficulty effect: Easy (27.0%) → Hard (23.8%). The model can sometimes sort 3 blocks by size, but fails with 6.
+> - **Spatial & Key-Lock** are uniformly near-zero across all tiers — the model fundamentally cannot trace paths.
+> - **Collision & Circuit** hover at ~50% regardless of difficulty, indicating the model is exploiting surface-level binary cues (yes/no) rather than actually simulating physics.
+> - **Container** *increases* with difficulty, likely because more containers and steps give longer prompts that contain more arithmetic tokens the model can pattern-match against.
 
 ## How It Works Under the Hood
 
@@ -324,17 +341,21 @@ lm_eval --model hf \
 > [!NOTE]
 > **关键发现：** (1) Pythia 家族内存在清晰的**扩展趋势**：410M → 1.4B → 2.8B 准确率单调递增，但全部**低于随机猜测基线**（25%）。 (2) **Phi-2** 是唯一超过随机基线的模型，可能得益于其代码/数学密集的训练数据。 (3) 即使表现最好的 Phi-2 也仅达到 32.2%——远未到天花板——证实了具身空间推理对纯文本 LLM 仍然是真正的难题。
 
-### 扩展的具身认知任务 (v0.2 新增！)
+### 难度分级结果 (v0.2)
 
-我们在基准中新增了 5 个测试不同物理约束的任务。使用 `EleutherAI/pythia-410m` (0-shot) 的评估结果如下：
+每个任务生成三个难度等级（简单 / 中等 / 困难），通过调整核心复杂度参数（网格大小、对象数量、时间步长等）来产生**难度 × 模型**的评估矩阵。
 
-| 任务 | 测试的物理约束 | Pythia-410m 准确率 |
-|---|---|---|
-| **钥匙-锁谜题 (Key-Lock Puzzles)** | 状态依赖（必须先拾取钥匙才能开门） | 11.7% (远低于随机猜测) |
-| **物体堆叠 (Object Stacking)** | 重力、结构完整性、重心支撑 | 21.4% (低于随机猜测) |
-| **容器装水 (Container Filling)** | 容量、倾倒转移、溢出限制 | 46.1% |
-| **电路连通性 (Circuit Connectivity)** | 电路追踪与严格的拓扑回路 | 49.9% |
-| **碰撞预测 (Collision Prediction)** | 时间外推、物体轨迹、空间相交 | 50.0% |
+**Pythia-410m (0-shot, acc) 全任务全难度评估结果：**
+
+| 任务 | 简单 | 中等 | 困难 | 变化参数 |
+|---|---|---|---|---|
+| **空间导航** | 13.6% | 11.0% | 15.8% | 网格: 4→5→7, 障碍物: 2→3→5 |
+| **钥匙-锁谜题** | 9.8% | 12.4% | 13.6% | 网格: 4→5→7, 钥匙对数: 1→1‑2→2‑3 |
+| **物体堆叠** | **27.0%** | 23.6% | 23.8% | 积木数: 3→4→6, 宽度范围扩大 |
+| **容器装水** | 37.2% | 46.4% | 47.6% | 容器数: 2→2‑3→3‑4, 步骤: 2‑3→3‑5→5‑7 |
+| **碰撞预测** | 50.0% | 50.0% | 50.0% | 网格: 4→5→7, 对象: 2→2→3, 步数: 3→5→8 |
+| **电路连通性** | 49.8% | 49.8% | 49.8% | 网格: 4→5→7, 开关: 1→1‑3→2‑4 |
+| *随机基线* | *25.0%* | *25.0%* | *25.0%* | — |
 
 ## 工作原理
 

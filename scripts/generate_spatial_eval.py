@@ -37,6 +37,10 @@ NUM_OBSTACLES = 3
 DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Up, Down, Left, Right
 DIR_NAMES = {(-1, 0): "up", (1, 0): "down", (0, -1): "left", (0, 1): "right"}
 
+# These can be overridden by CLI args
+_grid_size = GRID_SIZE
+_num_obstacles = NUM_OBSTACLES
+
 
 @dataclass
 class GridScenario:
@@ -115,23 +119,25 @@ def path_to_directions(path: List[Coord]) -> List[str]:
 # Scenario generation
 # ---------------------------------------------------------------------------
 
-def generate_scenario(rng: random.Random) -> Optional[GridScenario]:
+def generate_scenario(rng: random.Random, grid_size: int = None, num_obstacles: int = None) -> Optional[GridScenario]:
     """
     Generate a single valid grid scenario with guaranteed solvability.
     Returns None if the random placement yields no valid path (caller retries).
     """
-    all_coords = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE)]
-    chosen = rng.sample(all_coords, 2 + NUM_OBSTACLES)
+    gs = grid_size or _grid_size
+    no = num_obstacles or _num_obstacles
+    all_coords = [(r, c) for r in range(gs) for c in range(gs)]
+    chosen = rng.sample(all_coords, 2 + no)
 
     start, end = chosen[0], chosen[1]
     obstacles = set(chosen[2:])
 
-    path = a_star(start, end, obstacles)
+    path = a_star(start, end, obstacles, gs)
     if path is None:
         return None
 
     return GridScenario(
-        grid_size=GRID_SIZE,
+        grid_size=gs,
         start=start,
         end=end,
         obstacles=obstacles,
@@ -438,7 +444,23 @@ def main() -> None:
         default=42,
         help="Random seed for reproducibility (default: 42)",
     )
+    parser.add_argument(
+        "--grid-size",
+        type=int,
+        default=5,
+        help="Grid dimension (default: 5)",
+    )
+    parser.add_argument(
+        "--num-obstacles",
+        type=int,
+        default=3,
+        help="Number of obstacles per grid (default: 3)",
+    )
     args = parser.parse_args()
+
+    global _grid_size, _num_obstacles
+    _grid_size = args.grid_size
+    _num_obstacles = args.num_obstacles
 
     # Resolve output path
     if args.output:

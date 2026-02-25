@@ -42,9 +42,12 @@ DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 DIR_NAMES = {(-1, 0): "up", (1, 0): "down", (0, -1): "left", (0, 1): "right"}
 DIR_VECTORS = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
 
-COLORS = ["red", "blue"]
-COLOR_EMOJI = {"red": "🔴", "blue": "🔵"}
-DOOR_EMOJI = {"red": "[🔴]", "blue": "[🔵]"}
+COLORS = ["red", "blue", "green"]
+COLOR_EMOJI = {"red": "🔴", "blue": "🔵", "green": "🟢"}
+DOOR_EMOJI = {"red": "[🔴]", "blue": "[🔵]", "green": "[🟢]"}
+
+_min_pairs = 1
+_max_pairs = 2
 
 
 # ---------------------------------------------------------------------------
@@ -175,8 +178,8 @@ def generate_scenario(rng: random.Random) -> Optional[KeyLockScenario]:
     start = all_cells[0]
     end = all_cells[1]
 
-    # Place 1 or 2 key-door pairs
-    num_pairs = rng.choice([1, 2])
+    # Place key-door pairs
+    num_pairs = rng.randint(_min_pairs, _max_pairs)
     keys: Dict[Coord, str] = {}
     doors: Dict[Coord, str] = {}
 
@@ -589,7 +592,17 @@ def main() -> None:
         default=42,
         help="Random seed for reproducibility (default: 42).",
     )
+    parser.add_argument("--grid-size", type=int, default=5)
+    parser.add_argument("--num-obstacles", type=int, default=2)
+    parser.add_argument("--min-pairs", type=int, default=1)
+    parser.add_argument("--max-pairs", type=int, default=2)
     args = parser.parse_args()
+
+    global GRID_SIZE, NUM_OBSTACLES, _min_pairs, _max_pairs
+    GRID_SIZE = args.grid_size
+    NUM_OBSTACLES = args.num_obstacles
+    _min_pairs = args.min_pairs
+    _max_pairs = args.max_pairs
 
     rng = random.Random(args.seed)
     output_path = Path(args.output)

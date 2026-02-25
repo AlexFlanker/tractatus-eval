@@ -41,21 +41,21 @@ def simulate_step(containers: Dict[str, Container], action: str):
         tgt = parts[1]
         containers[tgt].current = 0
         
-def generate_scenario(rng: random.Random) -> Scenario:
-    num_containers = rng.choice([2, 3])
-    names = ["A", "B", "C"][:num_containers]
+def generate_scenario(rng: random.Random, min_containers=2, max_containers=3, min_steps=3, max_steps=5, max_capacity=10) -> Scenario:
+    num_containers = rng.randint(min_containers, max_containers)
+    names = [chr(65 + i) for i in range(num_containers)]
     
     # Random capacities between 2 and 10
     containers = {}
     for name in names:
-        cap = rng.randint(2, 10)
+        cap = rng.randint(2, max_capacity)
         # start randomly between 0 and cap
         start = rng.randint(0, cap)
         containers[name] = Container(name=name, capacity=cap, current=start)
         
     initial_containers = copy.deepcopy(containers)
     
-    num_actions = rng.randint(3, 5)
+    num_actions = rng.randint(min_steps, max_steps)
     actions = []
     
     for _ in range(num_actions):
@@ -148,7 +148,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="data/container_filling.jsonl", help="Output file")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--min-containers", type=int, default=2)
+    parser.add_argument("--max-containers", type=int, default=3)
+    parser.add_argument("--min-steps", type=int, default=3)
+    parser.add_argument("--max-steps", type=int, default=5)
+    parser.add_argument("--max-capacity", type=int, default=10)
+    parser.add_argument("--num-samples", type=int, default=1000)
     args = parser.parse_args()
+
+    NUM_SAMPLES = args.num_samples
 
     rng = random.Random(args.seed)
     
@@ -157,7 +165,14 @@ def main():
     
     with open(args.output, "w") as f:
         while valid_count < NUM_SAMPLES:
-            scenario = generate_scenario(rng)
+            scenario = generate_scenario(
+                rng,
+                min_containers=args.min_containers,
+                max_containers=args.max_containers,
+                min_steps=args.min_steps,
+                max_steps=args.max_steps,
+                max_capacity=args.max_capacity,
+            )
             distractors = generate_distractors(scenario, rng)
             
             if len(distractors) < 3:

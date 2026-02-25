@@ -102,8 +102,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="data/object_stacking.jsonl", help="Output file")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--num_blocks", type=int, default=4, help="Number of blocks per puzzle")
+    parser.add_argument("--num-blocks", type=int, default=4, help="Number of blocks per puzzle")
+    parser.add_argument("--min-width", type=int, default=1, help="Min block width")
+    parser.add_argument("--max-width", type=int, default=9, help="Max block width")
+    parser.add_argument("--num-samples", type=int, default=1000, help="Number of samples")
     args = parser.parse_args()
+
+    global NUM_SAMPLES, MIN_WIDTH, MAX_WIDTH, BLOCK_NAMES
+    NUM_SAMPLES = args.num_samples
+    MIN_WIDTH = args.min_width
+    MAX_WIDTH = args.max_width
+    BLOCK_NAMES = [chr(65 + i) for i in range(args.num_blocks)]
 
     rng = random.Random(args.seed)
     

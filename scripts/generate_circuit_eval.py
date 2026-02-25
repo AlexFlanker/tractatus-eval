@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 NUM_SAMPLES = 1000
 GRID_SIZE = 5
+_min_switches = 1
+_max_switches = 3
+_break_chance = 0.2
 
 @dataclass
 class CircuitScenario:
@@ -96,7 +99,7 @@ def generate_scenario(rng: random.Random) -> Optional[CircuitScenario]:
     full_path = path1 + path2[1:]
     
     # Place 1 to 3 switches on the wire
-    num_switches = rng.randint(1, 3)
+    num_switches = rng.randint(_min_switches, _max_switches)
     wire_cells = [p for p in full_path if p not in (plus, minus, bulb)]
     if len(wire_cells) < num_switches:
         return None
@@ -126,7 +129,7 @@ def generate_scenario(rng: random.Random) -> Optional[CircuitScenario]:
     lights_up = all(st == "CLOSED" for st in switch_states.values())
     
     # Sometimes generate a broken circuit (gap in wire)
-    is_broken = rng.random() < 0.2
+    is_broken = rng.random() < _break_chance
     broken_pos = None
     if is_broken:
         candidates = [p for p in full_path if p not in (plus, minus, bulb) and p not in switches.values()]
@@ -171,15 +174,14 @@ def generate_distractors(scenario: CircuitScenario) -> List[str]:
     return distractors[:3]
 
 def coord_label(r: int, c: int) -> str:
-    ROWS = "ABCDE"
-    COLS = "12345"
-    return f"{ROWS[r]}{COLS[c]}"
+    ROWS = "ABCDEFGHIJ"
+    return f"{ROWS[r]}{c+1}"
 
 def render_prompt(scenario: CircuitScenario) -> str:
     grid_str = ""
-    ROWS = "ABCDE"
-    COLS = "1 2 3 4 5"
-    grid_str += f"  {COLS}\n"
+    ROWS = "ABCDEFGHIJ"
+    cols_str = " ".join(str(i+1) for i in range(GRID_SIZE))
+    grid_str += f"  {cols_str}\n"
     for r in range(GRID_SIZE):
         row_str = " ".join(scenario.grid[r])
         grid_str += f"{ROWS[r]} {row_str}\n"
@@ -190,7 +192,7 @@ def render_prompt(scenario: CircuitScenario) -> str:
     switch_str = ", ".join(switch_desc)
     
     return (
-        f"Circuit diagram (5x5 grid):\n"
+        f"Circuit diagram ({GRID_SIZE}x{GRID_SIZE} grid):\n"
         f"{grid_str}\n"
         f"Legend: [+] Battery Positive, [-] Battery Negative, [B] Bulb, [W] Wire.\n"
         f"Numbers 1, 2, 3 represent switches S1, S2, S3.\n"
@@ -205,7 +207,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="data/circuit_connectivity.jsonl", help="Output file")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--grid-size", type=int, default=5)
+    parser.add_argument("--min-switches", type=int, default=1)
+    parser.add_argument("--max-switches", type=int, default=3)
+    parser.add_argument("--break-chance", type=float, default=0.2)
+    parser.add_argument("--num-samples", type=int, default=1000)
     args = parser.parse_args()
+
+    global NUM_SAMPLES, GRID_SIZE, _min_switches, _max_switches, _break_chance
+    NUM_SAMPLES = args.num_samples
+    GRID_SIZE = args.grid_size
+    _min_switches = args.min_switches
+    _max_switches = args.max_switches
+    _break_chance = args.break_chance
 
     rng = random.Random(args.seed)
     

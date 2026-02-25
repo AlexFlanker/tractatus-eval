@@ -7,12 +7,13 @@ from dataclasses import dataclass
 NUM_SAMPLES = 1000
 GRID_SIZE = 5
 MAX_STEPS = 5
+NUM_OBJECTS = 2
 
-ROWS = "ABCDE"
-COLS = "12345"
+ROWS = "ABCDEFGHIJ"
+COLS = "12345678910"
 
 def coord_label(r: int, c: int) -> str:
-    return f"{ROWS[r]}{COLS[c]}"
+    return f"{ROWS[r]}{c+1}"
 
 DIRS = {
     "UP": (-1, 0),
@@ -165,7 +166,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="data/collision_prediction.jsonl", help="Output file")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--grid-size", type=int, default=5)
+    parser.add_argument("--num-objects", type=int, default=2)
+    parser.add_argument("--max-steps", type=int, default=5)
+    parser.add_argument("--num-samples", type=int, default=1000)
     args = parser.parse_args()
+
+    global NUM_SAMPLES, GRID_SIZE, MAX_STEPS, NUM_OBJECTS
+    NUM_SAMPLES = args.num_samples
+    GRID_SIZE = args.grid_size
+    MAX_STEPS = args.max_steps
+    NUM_OBJECTS = args.num_objects
 
     rng = random.Random(args.seed)
     
