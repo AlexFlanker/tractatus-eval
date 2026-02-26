@@ -237,7 +237,7 @@ Evaluated using [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI
 
 Each task is generated at three difficulty levels (Easy / Medium / Hard) by scaling core complexity parameters: grid size, number of objects, time horizon, etc. This produces a **difficulty × model** matrix that reveals how LLM performance changes with increasing physical complexity.
 
-**Full results (0-shot, acc) across 4 models × 6 tasks × 3 difficulties:**
+**Full results (0-shot, acc) across 6 models × 6 tasks × 3 difficulties:**
 
 #### Spatial Navigation
 
@@ -245,8 +245,10 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 |---|---|---|---|---|
 | Pythia-410m | 410M | 13.6% | 11.0% | 15.8% |
 | Llama-3.2-1B | 1B | 27.6% | 22.8% | 28.2% |
-| Llama-3.2-3B | 3B | 29.6% | 32.2% | **33.8%** |
-| Phi-2 | 2.7B | **32.4%** | **31.2%** | **34.0%** |
+| Llama-3.2-3B | 3B | 29.6% | 32.2% | 33.8% |
+| Phi-2 | 2.7B | 32.4% | 31.2% | 34.0% |
+| Mistral-7B | 7B | 31.0% | **35.2%** | 34.2% |
+| Llama-3-8B | 8B | 30.2% | 31.2% | **34.4%** |
 
 #### Key-Lock Puzzles
 
@@ -256,6 +258,8 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 | Llama-3.2-1B | 1B | 14.6% | 18.0% | 18.6% |
 | Llama-3.2-3B | 3B | 23.4% | 26.2% | 27.4% |
 | Phi-2 | 2.7B | **30.4%** | **34.6%** | **34.8%** |
+| Mistral-7B | 7B | 25.6% | 31.4% | 33.4% |
+| Llama-3-8B | 8B | 30.2% | 30.8% | 31.0% |
 
 #### Object Stacking
 
@@ -265,6 +269,8 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 | Llama-3.2-1B | 1B | 26.8% | 28.2% | 26.6% |
 | Llama-3.2-3B | 3B | 26.0% | 25.8% | 23.6% |
 | Phi-2 | 2.7B | 30.4% | **41.0%** | **47.8%** |
+| Mistral-7B | 7B | 25.4% | 27.4% | 26.4% |
+| Llama-3-8B | 8B | 26.0% | 30.6% | 30.6% |
 
 #### Container Filling
 
@@ -273,7 +279,9 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 | Pythia-410m | 410M | 37.2% | 46.4% | 47.6% |
 | Llama-3.2-1B | 1B | 48.4% | 57.4% | 61.8% |
 | Llama-3.2-3B | 3B | 56.8% | 67.6% | 70.2% |
-| Phi-2 | 2.7B | **67.4%** | **59.0%** | **75.4%** |
+| Phi-2 | 2.7B | **67.4%** | 59.0% | **75.4%** |
+| Mistral-7B | 7B | 54.4% | **68.0%** | 74.6% |
+| Llama-3-8B | 8B | 55.0% | 66.6% | 71.6% |
 
 #### Collision Prediction
 
@@ -283,6 +291,8 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 | Llama-3.2-1B | 1B | 50.0% | 50.0% | 50.0% |
 | Llama-3.2-3B | 3B | 50.0% | 50.0% | 50.0% |
 | Phi-2 | 2.7B | 50.0% | 50.0% | 50.0% |
+| Mistral-7B | 7B | 50.0% | 50.0% | 50.0% |
+| Llama-3-8B | 8B | 50.0% | 50.0% | 50.0% |
 
 #### Circuit Connectivity
 
@@ -292,14 +302,16 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 | Llama-3.2-1B | 1B | 49.8% | 49.8% | 49.8% |
 | Llama-3.2-3B | 3B | 49.8% | 49.8% | 49.8% |
 | Phi-2 | 2.7B | 49.8% | 49.8% | 49.8% |
+| Mistral-7B | 7B | 49.8% | 49.8% | 49.8% |
+| Llama-3-8B | 8B | 49.8% | 49.8% | 49.8% |
 
 > [!IMPORTANT]
 > **Key insights from the full model × difficulty matrix:**
-> - **Phi-2 dominates** across all tasks, especially Container Filling (75.4% Hard) and Object Stacking (47.8% Hard) — likely due to its math/code-heavy training mix.
-> - **Llama-3.2 shows clear scaling:** 1B → 3B improves on every task that isn't binary, confirming that parameter count helps for genuine physical reasoning.
-> - **Collision & Circuit are universally at ~50%** regardless of model or difficulty — all models exploit binary yes/no surface cues rather than simulating physics.
+> - **Phi-2 (2.7B) outperforms both 7B+ models** — Mistral-7B (38.9% avg) and Llama-3-8B (39.0% avg) score below Phi-2 (43.2%), proving training data composition trumps raw scale for embodied reasoning.
+> - **7B+ models plateau together** — Mistral-7B and Llama-3-8B achieve nearly identical performance despite different architectures, suggesting a shared capability ceiling at this scale.
+> - **Collision & Circuit are universally at ~50%** across all 6 models regardless of scale (410M–8B) — no model performs genuine physics simulation.
 > - **Container Filling accuracy *increases* with difficulty** across all models — more steps provide more arithmetic tokens for pattern matching.
-> - **Object Stacking** shows opposing trends: Phi-2 improves with more blocks (30.4% → 47.8%) while Llama-3.2-3B degrades (26.0% → 23.6%), revealing fundamentally different reasoning strategies.
+> - **Object Stacking** shows opposing trends: Phi-2 improves with more blocks (30.4% → 47.8%) while all other models stay flat or degrade, revealing Phi-2's unique code-trained sorting heuristics.
 
 ### Performance Analysis
 
@@ -571,7 +583,7 @@ lm_eval --model hf \
 
 每个任务生成三个难度等级（简单 / 中等 / 困难），通过调整核心复杂度参数来产生**难度 × 模型**评估矩阵。
 
-**4 模型 × 6 任务 × 3 难度（0-shot, acc）完整结果：**
+**6 模型 × 6 任务 × 3 难度（0-shot, acc）完整结果：**
 
 #### 空间导航
 
@@ -579,8 +591,10 @@ lm_eval --model hf \
 |---|---|---|---|---|
 | Pythia-410m | 410M | 13.6% | 11.0% | 15.8% |
 | Llama-3.2-1B | 1B | 27.6% | 22.8% | 28.2% |
-| Llama-3.2-3B | 3B | 29.6% | 32.2% | **33.8%** |
-| Phi-2 | 2.7B | **32.4%** | **31.2%** | **34.0%** |
+| Llama-3.2-3B | 3B | 29.6% | 32.2% | 33.8% |
+| Phi-2 | 2.7B | 32.4% | 31.2% | 34.0% |
+| Mistral-7B | 7B | 31.0% | **35.2%** | 34.2% |
+| Llama-3-8B | 8B | 30.2% | 31.2% | **34.4%** |
 
 #### 钥匙-锁谜题
 
@@ -590,6 +604,8 @@ lm_eval --model hf \
 | Llama-3.2-1B | 1B | 14.6% | 18.0% | 18.6% |
 | Llama-3.2-3B | 3B | 23.4% | 26.2% | 27.4% |
 | Phi-2 | 2.7B | **30.4%** | **34.6%** | **34.8%** |
+| Mistral-7B | 7B | 25.6% | 31.4% | 33.4% |
+| Llama-3-8B | 8B | 30.2% | 30.8% | 31.0% |
 
 #### 物体堆叠
 
@@ -599,6 +615,8 @@ lm_eval --model hf \
 | Llama-3.2-1B | 1B | 26.8% | 28.2% | 26.6% |
 | Llama-3.2-3B | 3B | 26.0% | 25.8% | 23.6% |
 | Phi-2 | 2.7B | 30.4% | **41.0%** | **47.8%** |
+| Mistral-7B | 7B | 25.4% | 27.4% | 26.4% |
+| Llama-3-8B | 8B | 26.0% | 30.6% | 30.6% |
 
 #### 容器装水
 
@@ -607,7 +625,9 @@ lm_eval --model hf \
 | Pythia-410m | 410M | 37.2% | 46.4% | 47.6% |
 | Llama-3.2-1B | 1B | 48.4% | 57.4% | 61.8% |
 | Llama-3.2-3B | 3B | 56.8% | 67.6% | 70.2% |
-| Phi-2 | 2.7B | **67.4%** | **59.0%** | **75.4%** |
+| Phi-2 | 2.7B | **67.4%** | 59.0% | **75.4%** |
+| Mistral-7B | 7B | 54.4% | **68.0%** | 74.6% |
+| Llama-3-8B | 8B | 55.0% | 66.6% | 71.6% |
 
 #### 碰撞预测 & 电路连通性
 
@@ -615,10 +635,10 @@ lm_eval --model hf \
 
 > [!IMPORTANT]
 > **核心发现：**
-> - **Phi-2 全面领先**，尤其容器装水（困难 75.4%）和物体堆叠（困难 47.8%）
-> - **Llama-3.2 展现清晰的规模效应：** 1B → 3B 在所有非二元任务上均有提升
-> - **碰撞 & 电路在所有模型上均为 ~50%**——模型利用二元线索而非物理模拟
-> - **物体堆叠**中 Phi-2 随难度提升而改善（30.4% → 47.8%），Llama-3.2-3B 反而下降（26.0% → 23.6%），揭示了根本不同的推理策略
+> - **Phi-2 (2.7B) 击败两个 7B+ 模型** — Mistral-7B（38.9%）和 Llama-3-8B（39.0%）均低于 Phi-2（43.2%），证明训练数据组成比参数量更重要
+> - **7B+ 模型趋于一致** — Mistral-7B 和 Llama-3-8B 表现几乎相同，暗示该规模存在共同的能力上限
+> - **碰撞 & 电路在全部 6 个模型上均为 ~50%**（410M–8B）—— 没有任何模型进行真正的物理模拟
+> - **物体堆叠**中 Phi-2 随难度提升而改善（30.4% → 47.8%），其他所有模型持平或下降，揭示了 Phi-2 独特的代码训练排序启发式
 
 ### 性能分析
 

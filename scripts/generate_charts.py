@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # ─── Data ───────────────────────────────────────────────────────────
-models = ['Pythia-410m', 'Llama-3.2-1B', 'Llama-3.2-3B', 'Phi-2']
-params = [0.41, 1.0, 3.0, 2.7]
+models = ['Pythia-410m', 'Llama-3.2-1B', 'Llama-3.2-3B', 'Phi-2', 'Mistral-7B', 'Llama-3-8B']
+params = [0.41, 1.0, 3.0, 2.7, 7.0, 8.0]
 tasks = ['Spatial', 'Key-Lock', 'Stacking', 'Container', 'Collision', 'Circuit']
 diffs = ['Easy', 'Medium', 'Hard']
 
@@ -32,14 +32,26 @@ acc = {
         'Spatial': [32.4, 31.2, 34.0], 'Key-Lock': [30.4, 34.6, 34.8],
         'Stacking': [30.4, 41.0, 47.8], 'Container': [67.4, 59.0, 75.4],
         'Collision': [50.0, 50.0, 50.0], 'Circuit': [49.8, 49.8, 49.8]
+    },
+    'Mistral-7B': {
+        'Spatial': [31.0, 35.2, 34.2], 'Key-Lock': [25.6, 31.4, 33.4],
+        'Stacking': [25.4, 27.4, 26.4], 'Container': [54.4, 68.0, 74.6],
+        'Collision': [50.0, 50.0, 50.0], 'Circuit': [49.8, 49.8, 49.8]
+    },
+    'Llama-3-8B': {
+        'Spatial': [30.2, 31.2, 34.4], 'Key-Lock': [30.2, 30.8, 31.0],
+        'Stacking': [26.0, 30.6, 30.6], 'Container': [55.0, 66.6, 71.6],
+        'Collision': [50.0, 50.0, 50.0], 'Circuit': [49.8, 49.8, 49.8]
     }
 }
 
 colors = {
     'Pythia-410m': '#6C7B95',
-    'Llama-3.2-1B': '#2196F3',
+    'Llama-3.2-1B': '#42A5F5',
     'Llama-3.2-3B': '#1565C0',
-    'Phi-2': '#FF6F00'
+    'Phi-2': '#FF6F00',
+    'Mistral-7B': '#AB47BC',
+    'Llama-3-8B': '#26A69A'
 }
 
 OUT = '/Users/tianjiesun/Desktop/FDE_Portfolio_2026/tractatus_eval/assets'
@@ -54,18 +66,18 @@ plt.rcParams.update({
 })
 
 # ─── Chart 1: Model × Task Heatmap-style grouped bar ────────────
-fig, ax = plt.subplots(figsize=(12, 5.5))
+fig, ax = plt.subplots(figsize=(14, 5.5))
 non_binary = ['Spatial', 'Key-Lock', 'Stacking', 'Container']
 x = np.arange(len(non_binary))
-width = 0.18
+width = 0.12
 
 for i, m in enumerate(models):
     avgs = [np.mean(acc[m][t]) for t in non_binary]
-    bars = ax.bar(x + i * width - 1.5 * width, avgs, width,
+    bars = ax.bar(x + i * width - 2.5 * width, avgs, width,
                   label=f'{m} ({params[i]}B)', color=colors[m], edgecolor='white', linewidth=0.5)
     for bar, val in zip(bars, avgs):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.8,
-                f'{val:.1f}', ha='center', va='bottom', fontsize=8, fontweight='bold')
+                f'{val:.1f}', ha='center', va='bottom', fontsize=7, fontweight='bold')
 
 ax.axhline(y=25, color='#E0E0E0', linestyle='--', linewidth=1, label='Random (25%)')
 ax.set_xlabel('Task', fontweight='bold', fontsize=12)
