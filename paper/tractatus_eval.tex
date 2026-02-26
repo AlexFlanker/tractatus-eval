@@ -1,0 +1,243 @@
+\documentclass[11pt]{article}
+
+% ─── Packages ───────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+}
+
+% ─── Title ──────────────────────────────────────────────────────────
+\title{
+  \textbf{Tractatus-Eval: A Physics-Engine Validated Benchmark\\
+  for Embodied Spatial Reasoning in Large Language Models}
+}
+
+\author{
+  Tianjie Sun \\
+  \texttt{alexflanker26@gmail.com} \\
+  \url{https://github.com/AlexFlanker/tractatus-eval}
+}
+
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+% ─── Abstract ───────────────────────────────────────────────────────
+\begin{abstract}
+We present \textsc{Tractatus-Eval}, a benchmark for evaluating embodied spatial reasoning capabilities in text-only large language models (LLMs). The benchmark comprises six physics-based tasks—spatial navigation, key-lock puzzles, object stacking, container filling, collision prediction, and circuit connectivity—each generated at three difficulty tiers (Easy, Medium, Hard), yielding 9,000 validated samples across 18 subtasks. Unlike existing benchmarks that use hand-crafted or randomly generated distractors, \textsc{Tractatus-Eval} employs deterministic \emph{physics-engine validators} for each task, ensuring every wrong answer provably violates physical constraints and achieving a verified \textbf{0\% distractor contamination rate}. We evaluate four model families (Pythia-410m through Phi-2) and find: (1) all models score at exactly $\sim$50\% on binary prediction tasks regardless of scale, demonstrating no genuine physics simulation; (2) training data composition matters more than parameter count for embodied reasoning; and (3) counter-intuitive accuracy \emph{increases} with difficulty on certain tasks reveal pattern matching rather than simulation. Our results quantify the \emph{embodied cognition gap}—the engineering cost of the philosophical limitation that Wittgenstein identified: ``The limits of my language mean the limits of my world.''
+
+\vspace{0.5em}
+\noindent\textbf{Keywords:} embodied reasoning, spatial cognition, LLM evaluation, benchmark, physics simulation
+\end{abstract}
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Modern large language models (LLMs) exhibit remarkable linguistic reasoning capabilities, yet consistently fail on tasks requiring \emph{embodied spatial understanding}—intuitions that any physically-situated agent acquires trivially through interaction with the world. Consider a simple instruction: ``Navigate from A1 to E5, avoiding walls.'' A child solves this instantly. State-of-the-art LLMs, however, routinely generate paths that \emph{pass through walls}, \emph{teleport across obstacles}, or \emph{step outside grid boundaries}—behaviors that are physically impossible but textually ``plausible'' \citep{liu2023agentbench, shridhar2020alfworld}.
+
+This gap between linguistic competence and physical-world understanding is not merely a failure of scale. It reflects a fundamental limitation identified by Wittgenstein in the \emph{Tractatus Logico-Philosophicus}: ``The limits of my language mean the limits of my world'' (Proposition 5.6). A text-only LLM has never \emph{experienced} a wall. It possesses no sensorimotor grounding for the concept of ``impassable''—it can only pattern-match the \emph{word} ``obstacle'' against its training distribution.
+
+\textsc{Tractatus-Eval} operationalizes this insight as a quantitative engineering benchmark. We make three contributions:
+
+\begin{enumerate}
+    \item \textbf{A 6-task, 3-tier benchmark} covering distinct physical reasoning dimensions: grid pathfinding, state-dependent navigation, gravitational stability, volume conservation, trajectory prediction, and circuit analysis.
+    \item \textbf{Physics-engine validated distractors} — each task employs a deterministic validator ensuring every wrong answer provably violates physical constraints, achieving 0\% contamination.
+    \item \textbf{Comprehensive baseline evaluations} across 4 model families revealing three distinct task categories: genuinely hard, partially solvable, and unsolvable (binary).
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Spatial Reasoning Benchmarks.}
+SpartQA \citep{mirzaee2021spartqa} and StepGame \citep{shi2022stepgame} evaluate spatial language understanding but rely on textual descriptions without physics constraints. CLEVR \citep{johnson2017clevr} tests visual reasoning with synthetic scenes but targets vision-language models. BIG-Bench \citep{srivastava2022beyond} includes spatial tasks (e.g., \texttt{navigate}) but uses hand-crafted examples without systematic distractor validation.
+
+\paragraph{Embodied Evaluation.}
+ALFWorld \citep{shridhar2020alfworld} and VirtualHome \citep{puig2018virtualhome} evaluate embodied task completion in interactive environments but require agent infrastructure. \textsc{Tractatus-Eval} distills the core reasoning challenge into a static multiple-choice format compatible with standard LLM evaluation pipelines.
+
+\paragraph{Benchmark Contamination.}
+Recent work has highlighted the problem of benchmark contamination \citep{jacovi2023stop, yang2023rethinking}. \textsc{Tractatus-Eval} addresses a distinct but related concern: \emph{distractor contamination}, where ostensibly wrong answers are actually valid alternatives, penalizing models that reason correctly.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Benchmark Design}
+\label{sec:design}
+
+\subsection{Overview}
+
+\textsc{Tractatus-Eval} consists of six tasks, each testing a distinct dimension of physical reasoning. All tasks share a common architecture: procedural generation $\rightarrow$ deterministic ground truth $\rightarrow$ physics-validated distractors $\rightarrow$ JSONL output. Table~\ref{tab:tasks} summarizes the six tasks.
+
+\begin{table}[h]
+\centering
+\caption{The six tasks of \textsc{Tractatus-Eval}.}
+\label{tab:tasks}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Task} & \textbf{Physics Constraints} & \textbf{Validator} & \textbf{Difficulty Parameters} \\
+\midrule
+Spatial Navigation & Pathfinding, obstacle avoidance & \texttt{simulate\_path()} & Grid: 4/5/7, Obstacles: 2/3/5 \\
+Key-Lock Puzzles & State-dependent behavior, inventory & \texttt{simulate\_path()} & Grid: 4/5/7, Keys: 1/1-2/2-3 \\
+Object Stacking & Gravity, structural stability & \texttt{is\_stable()} & Blocks: 3/4/6 \\
+Container Filling & Volume conservation, overflow & \texttt{simulate\_step()} & Containers: 2/2-3/3-4 \\
+Collision Prediction & Trajectory intersection & \texttt{simulate()} & Grid: 4/5/7, Objects: 2/2/3 \\
+Circuit Connectivity & Topological reachability & Graph BFS & Grid: 4/5/7, Switches: 1/1-3/2-4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Task Descriptions}
+
+\paragraph{Spatial Navigation.} The model must find the shortest valid path from a start to a goal on an $N \times N$ grid with impassable obstacles. Ground truth is computed via A* search with Manhattan distance heuristic. Distractors include wall-phasing straight lines, random walks, reversed paths, and single-step mutations.
+
+\paragraph{Key-Lock Puzzles.} Extends spatial navigation with colored doors requiring matching keys. Solutions interleave movement actions with \texttt{pick\_up} and \texttt{unlock} operations. Ground truth uses state-aware BFS over a (position, inventory) state space $\sim$25$\times$ larger than plain pathfinding.
+
+\paragraph{Object Stacking.} Given blocks of varying widths, the model must determine a stable bottom-to-top ordering where each block is fully supported: $\text{width}[i] \leq \text{width}[i-1]$. The validator \texttt{is\_stable()} rejects any permutation violating this constraint.
+
+\paragraph{Container Filling.} Models receive 2--4 containers with capacities and initial levels, then execute a sequence of pour/fill/empty operations. Ground truth is computed by \texttt{simulate\_step()}, which enforces $\min(\text{poured} + \text{current}, \text{capacity})$ at each step—excess liquid overflows and is lost.
+
+\paragraph{Collision Prediction.} Two or more objects move at constant velocities on an $N \times N$ grid. The model predicts whether and when they collide (occupy the same cell at the same timestep). Ground truth is computed by deterministic step-by-step trajectory simulation.
+
+\paragraph{Circuit Connectivity.} An $N \times N$ grid contains batteries, bulbs, wires, and numbered switches. The model determines whether the bulb lights up by checking if a complete path exists from $+$ through wires and \emph{closed} switches to the bulb and back to $-$.
+
+\subsection{Distractor Validation}
+
+A naive distractor engine can accidentally generate \emph{alternate valid paths}—paths that differ from the computed answer but still satisfy all physical constraints. Scoring these as ``wrong'' penalizes models that reason correctly. \textsc{Tractatus-Eval} solves this with per-task physics validators:
+
+\begin{equation}
+    \text{distractor } d \text{ accepted} \iff \exists \text{ constraint } c \in C_\text{task} : \text{violates}(d, c)
+\end{equation}
+
+If a candidate passes all physical checks, it is silently discarded. Audit across all tasks confirms 0\% contamination.
+
+\subsection{Difficulty Tiers}
+
+Each task is generated at three difficulty levels by scaling complexity parameters (Table~\ref{tab:tasks}, column 4). Each tier produces 500 samples, yielding $6 \times 3 \times 500 = 9{,}000$ total evaluation instances.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Setup}
+
+We evaluate four models using the EleutherAI \texttt{lm-evaluation-harness} \citep{eval-harness} in 0-shot multiple-choice mode on Apple M5 (24GB, MPS). All tasks present 4 options (1 correct + 3 distractors). We report accuracy (\texttt{acc}) and length-normalized accuracy (\texttt{acc\_norm}).
+
+\subsection{Results}
+
+\begin{table}[h]
+\centering
+\caption{Average accuracy (\%) on non-binary tasks (Spatial, Key-Lock, Stacking, Container) across difficulty tiers. Random baseline is 25\%.}
+\label{tab:results}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} & \textbf{Avg} \\
+\midrule
+Pythia-410m & 410M & 21.9 & 23.4 & 25.2 & 23.5 \\
+Llama-3.2-1B & 1B & 29.4 & 31.6 & 33.8 & 31.6 \\
+Llama-3.2-3B & 3B & 33.5 & 37.5 & 38.8 & 36.9 \\
+Phi-2 & 2.7B & 40.2 & 41.5 & 48.0 & \textbf{43.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Binary tasks are unsolvable.} All four models score exactly $\sim$50\% on Collision Prediction and Circuit Connectivity across all difficulty levels. This invariance to model scale and task difficulty provides strong evidence that these models exploit binary surface cues (yes/no) rather than performing any form of physical simulation.
+
+\paragraph{Training data composition outweighs scale.} Phi-2 (2.7B) outperforms the larger Llama-3.2-3B (3.0B) on every task, averaging 43.2\% vs 36.9\% on non-binary tasks. This suggests that Phi-2's textbook-quality code/math training corpus provides more useful inductive biases for physical reasoning than pure parameter scaling.
+
+\paragraph{Counter-intuitive difficulty trends.} Container Filling accuracy \emph{increases} with difficulty across all models (e.g., Pythia: 37.2\% Easy $\rightarrow$ 47.6\% Hard). We attribute this to longer prompts providing more arithmetic tokens for pattern matching—a calibration artifact rather than genuine reasoning improvement. Conversely, Phi-2's anomalous improvement on Object Stacking (30.4\% $\rightarrow$ 47.8\%) likely reflects memorized sorting heuristics from code training data activated by longer inputs.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Analysis}
+\label{sec:analysis}
+
+Our results reveal three distinct task categories (Figure~\ref{fig:ranking}):
+
+\begin{enumerate}
+    \item \textbf{Genuinely Hard} (Spatial, Key-Lock): Even the best model barely exceeds random chance ($\sim$33\%). Path tracing is fundamentally beyond token prediction.
+    \item \textbf{Partially Solvable} (Stacking, Container): Models can pattern-match arithmetic and sorting operations, reaching up to 75\% on Container Hard. However, this reflects surface-level heuristics, not physical understanding.
+    \item \textbf{Unsolvable Binary} (Collision, Circuit): All models default to coin-flip behavior ($\sim$50\%). These tasks serve as \emph{control conditions} proving that apparent reasoning on other tasks may also be pattern matching rather than simulation.
+\end{enumerate}
+
+\paragraph{Implications for alignment.} The embodied cognition gap measured by \textsc{Tractatus-Eval} has practical consequences: an LLM advising a robot to ``walk through the wall'' is not making a linguistic error—it genuinely lacks the concept of physical impassability. This motivates preference-based alignment (DPO) using physics-validated contrastive pairs, or external guardrails that bypass the model's reasoning entirely.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+\textsc{Tractatus-Eval} provides a rigorous, physics-validated benchmark for measuring the embodied cognition gap in text-only LLMs. Our key contributions are: (1) a zero-contamination distractor validation methodology applicable to any physics-based benchmark; (2) empirical evidence that no current model performs genuine physics simulation, even on simple grid-world tasks; and (3) a difficulty-tiered evaluation framework that separates pattern matching from physical reasoning. We release all generators, datasets, and evaluation configs to facilitate reproducible research.
+
+% ─── References ─────────────────────────────────────────────────────
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{10}
+
+\bibitem[Eval Harness(2024)]{eval-harness}
+Gao, L., Tow, J., Abbasi, B., et al.
+\newblock A framework for few-shot language model evaluation.
+\newblock \url{https://github.com/EleutherAI/lm-evaluation-harness}, 2024.
+
+\bibitem[Johnson et al.(2017)]{johnson2017clevr}
+Johnson, J., Hariharan, B., van der Maaten, L., et al.
+\newblock CLEVR: A diagnostic dataset for compositional language and elementary visual reasoning.
+\newblock In \emph{CVPR}, 2017.
+
+\bibitem[Liu et al.(2023)]{liu2023agentbench}
+Liu, X., Yu, H., Zhang, H., et al.
+\newblock AgentBench: Evaluating LLMs as agents.
+\newblock In \emph{ICLR}, 2024.
+
+\bibitem[Mirzaee et al.(2021)]{mirzaee2021spartqa}
+Mirzaee, R., Faghihi, H.R., Ning, Q., and Kordjamshidi, P.
+\newblock SpartQA: A textual question answering benchmark for spatial reasoning.
+\newblock In \emph{NAACL}, 2021.
+
+\bibitem[Puig et al.(2018)]{puig2018virtualhome}
+Puig, X., Ra, K., Boben, M., et al.
+\newblock VirtualHome: Simulating household activities via programs.
+\newblock In \emph{CVPR}, 2018.
+
+\bibitem[Shi et al.(2022)]{shi2022stepgame}
+Shi, Z., Zhang, Q., Lipani, A.
+\newblock StepGame: A new benchmark for robust multi-hop spatial reasoning in texts.
+\newblock In \emph{AAAI}, 2022.
+
+\bibitem[Shridhar et al.(2020)]{shridhar2020alfworld}
+Shridhar, M., Yuan, X., C\^{o}t\'{e}, M.-A., et al.
+\newblock ALFWorld: Aligning text and embodied environments for interactive learning.
+\newblock In \emph{ICLR}, 2021.
+
+\bibitem[Srivastava et al.(2022)]{srivastava2022beyond}
+Srivastava, A., Rastogi, A., Rao, A., et al.
+\newblock Beyond the imitation game: Quantifying and extrapolating the capabilities of language models.
+\newblock \emph{arXiv preprint arXiv:2206.04615}, 2022.
+
+\bibitem[Jacovi et al.(2023)]{jacovi2023stop}
+Jacovi, A., Caciularu, A., Goldberger, O., et al.
+\newblock Stop uploading test data in plain text: Practical strategies for mitigating data contamination by evaluation benchmarks.
+\newblock In \emph{EMNLP}, 2023.
+
+\bibitem[Yang et al.(2023)]{yang2023rethinking}
+Yang, S., Chiang, W.-L., Zheng, L., et al.
+\newblock Rethinking benchmark and contamination for language models with rephrased samples.
+\newblock \emph{arXiv preprint arXiv:2311.04850}, 2023.
+
+\end{thebibliography}
+
+\end{document}
