@@ -301,6 +301,40 @@ Each task is generated at three difficulty levels (Easy / Medium / Hard) by scal
 > - **Container Filling accuracy *increases* with difficulty** across all models — more steps provide more arithmetic tokens for pattern matching.
 > - **Object Stacking** shows opposing trends: Phi-2 improves with more blocks (30.4% → 47.8%) while Llama-3.2-3B degrades (26.0% → 23.6%), revealing fundamentally different reasoning strategies.
 
+### Performance Analysis
+
+#### Overall Model Ranking
+
+![Overall model ranking across non-binary tasks](assets/model_ranking.png)
+
+Phi-2 (2.7B) leads despite having fewer parameters than Llama-3.2-3B (3.0B), averaging **43.2%** on the four non-binary tasks vs Llama-3.2-3B's 36.9%. This reveals that **training data composition** (Phi-2's textbook-quality code/math corpus) matters more than raw parameter count for embodied reasoning.
+
+#### Model × Task Breakdown
+
+![Model performance grouped by task](assets/model_vs_task.png)
+
+**Three distinct task categories emerge:**
+
+| Category | Tasks | Best Model | Insight |
+|---|---|---|---|
+| **Genuinely Hard** | Spatial, Key-Lock | Phi-2 (32-33%) | Even the best model barely exceeds random. Path tracing is fundamentally beyond token prediction. |
+| **Partially Solvable** | Stacking, Container | Phi-2 (40-67%) | Models can pattern-match arithmetic and sorting, but Stacking plateaus for most models near random. |
+| **Unsolvable (Binary)** | Collision, Circuit | All at ~50% | All models default to coin-flip behavior. These tasks require genuine simulation that no scale of text model achieves. |
+
+#### Difficulty Scaling Trends
+
+![How difficulty affects performance across tasks](assets/difficulty_scaling.png)
+
+**Key observations from the difficulty curves:**
+
+1. **Container Filling is the only task where accuracy *increases* with difficulty** — more pouring steps create longer arithmetic chains that give the model more tokens to pattern-match against. This is a calibration artifact, not genuine reasoning improvement.
+
+2. **Stacking reveals a Phi-2 anomaly** — Phi-2 *improves* dramatically with more blocks (30% → 48%), while all other models degrade or stay flat. This suggests Phi-2 has memorized sorting heuristics from its code training data that activate more strongly with longer inputs.
+
+3. **Spatial and Key-Lock are completely flat** across difficulties for all models — whether it's a 4×4 grid or a 7×7 grid, the model is equally lost. Grid size doesn't add gradual complexity; it's a binary capability gap.
+
+4. **No model demonstrates genuine physics simulation.** If models were actually simulating physics, we'd expect monotonic accuracy *decreases* with difficulty. The mixed trends (increases, plateaus, and U-shapes) indicate pattern matching on surface features, not simulation.
+
 ## How It Works Under the Hood
 
 ```
@@ -585,6 +619,40 @@ lm_eval --model hf \
 > - **Llama-3.2 展现清晰的规模效应：** 1B → 3B 在所有非二元任务上均有提升
 > - **碰撞 & 电路在所有模型上均为 ~50%**——模型利用二元线索而非物理模拟
 > - **物体堆叠**中 Phi-2 随难度提升而改善（30.4% → 47.8%），Llama-3.2-3B 反而下降（26.0% → 23.6%），揭示了根本不同的推理策略
+
+### 性能分析
+
+#### 模型综合排名
+
+![模型在非二元任务上的综合排名](assets/model_ranking.png)
+
+Phi-2 (2.7B) 以 **43.2%** 的非二元任务平均准确率领先，尽管参数量少于 Llama-3.2-3B (3.0B，36.9%)。这表明**训练数据的组成**（Phi-2 的教科书级代码/数学语料库）比纯参数量对具身推理更重要。
+
+#### 模型 × 任务细分
+
+![各模型在不同任务上的表现](assets/model_vs_task.png)
+
+**三个不同的任务类别浮现：**
+
+| 类别 | 任务 | 最佳模型 | 分析 |
+|---|---|---|---|
+| **真正困难** | 空间导航、钥匙-锁 | Phi-2 (32-33%) | 即使最好的模型也几乎不超过随机猜测。路径追踪根本超出了 token 预测的能力范围。 |
+| **部分可解** | 物体堆叠、容器装水 | Phi-2 (40-67%) | 模型可以模式匹配算术和排序，但大多数模型在堆叠上停滞在随机猜测水平附近。 |
+| **不可解（二元）** | 碰撞预测、电路 | 全部 ~50% | 所有模型都默认为抛硬币行为。这些任务需要真正的物理模拟，任何规模的文本模型都无法实现。 |
+
+#### 难度缩放趋势
+
+![难度如何影响各任务的表现](assets/difficulty_scaling.png)
+
+**难度曲线的关键观察：**
+
+1. **容器装水是唯一准确率随难度*增加*的任务** —— 更多倾倒步骤创造更长的算术链，给模型更多可模式匹配的 token。这是校准假象，而非真正的推理提升。
+
+2. **物体堆叠揭示了 Phi-2 异常** —— Phi-2 随积木增多而*显著提升*（30% → 48%），而其他所有模型下降或持平。这表明 Phi-2 从代码训练数据中记忆了排序启发式。
+
+3. **空间和钥匙-锁在所有模型上完全平坦** —— 无论是 4×4 还是 7×7 网格，模型同样迷失。这是一个二元能力鸿沟。
+
+4. **没有任何模型展现出真正的物理模拟。** 如果模型确实在模拟物理，我们应该看到准确率随难度*单调下降*。混合趋势（上升、平台和 U 形）表明模式匹配而非模拟。
 
 ## 工作原理
 
